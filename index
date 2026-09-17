@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ahorros e Ingresos</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para las gráficas de gastos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- HEADER Y PERFIL DE CORREO -->
+        <header class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fa-solid fa-wallet text-emerald-400"></i> Mi Control Financiero
+                </h1>
+                <p class="text-sm text-slate-400">Gestiona tus ingresos, gastos fijos, metas y tickets pendientes.</p>
+            </div>
+            
+            <!-- Selector de Cuenta por Correo -->
+            <div class="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700 w-full md:w-auto">
+                <i class="fa-solid fa-envelope text-indigo-400"></i>
+                <input type="email" id="userEmail" placeholder="Tu correo (ej: ipad@gmail.com)" 
+                    class="bg-transparent text-sm focus:outline-none text-white w-48 md:w-56" onchange="cambiarCuentaUser()">
+                <button onclick="cambiarCuentaUser()" class="bg-indigo-600 hover:bg-indigo-500 text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                    Cargar
+                </button>
+            </div>
+        </header>
+
+        <!-- SELECTOR DE MES Y AÑO -->
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-lg flex justify-between items-center">
+            <span class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-indigo-400"></i> Período Activo:
+            </span>
+            <input type="month" id="mesSelector" class="bg-slate-900 border border-slate-700 text-white px-4 py-2 rounded-xl focus:outline-none focus:border-emerald-500 font-medium" onchange="actualizarMes()">
+        </div>
+
+        <!-- TARJETAS DE BALANCE -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Inicial</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="number" id="capitalInicialInput" step="0.01" class="text-xl font-bold text-white bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 w-full" onchange="guardarCapitalInicial()" placeholder="0.00">
+                    <span class="text-xl font-bold text-white">€</span>
+                </div>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
+                <p class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Ingresos Totales</p>
+                <h3 id="totalIngresos" class="text-2xl font-bold text-emerald-400 mt-1">0.00 €</h3>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
+                <p class="text-xs font-semibold text-rose-400 uppercase tracking-wider">Gastos Totales</p>
+                <h3 id="totalGastos" class="text-2xl font-bold text-rose-400 mt-1">0.00 €</h3>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
+                <p class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Saldo Final en Caja</p>
+                <h3 id="saldoFinal" class="text-2xl font-bold text-indigo-400 mt-1">0.00 €</h3>
+            </div>
+        </div>
+
+        <!-- METAS DE AHORRO E INTELIGENCIA DE ROLLOVR -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg space-y-3">
+                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta de Ahorro Mensual
+                </h2>
+                <div class="flex gap-2">
+                    <input type="number" id="metaAhorroInput" step="0.01" placeholder="Ej: 200" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 w-full text-white focus:outline-none focus:border-emerald-500">
+                    <button onclick="guardarMetaAhorro()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-xl transition">Definir</button>
+                </div>
+                <p class="text-xs text-slate-400" id="infoRollover">Arrastre de mes anterior: 0.00 €</p>
+            </div>
+            
+            <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg space-y-2">
+                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-indigo-400"></i> Distribución de Gastos
+                </h2>
+                <div class="h-32 flex justify-center items-center">
+                    <canvas id="graficoGastos"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GESTIÓN DE GASTOS FIJOS -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg space-y-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-amber-400"></i> Gastos Fijos Mensuales (Automáticos día 1)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input type="text" id="nombreGastoFijo" placeholder="Concepto (Ej: Gasolina, Alquiler)" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none">
+                <input type="number" id="montoGastoFijo" step="0.01" placeholder="Cantidad (€)" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none">
+                <button onclick="agregarGastoFijo()" class="bg-amber-600 hover:bg-amber-500 text-white font-medium py-2 rounded-xl transition">Añadir Gasto Fijo</button>
+            </div>
+            <div id="listaGastosFijos" class="flex flex-wrap gap-2 pt-2"></div>
+        </div>
+
+        <!-- FORMULARIO PARA AÑADIR MOVIMIENTOS -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg space-y-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-circle-plus text-emerald-400"></i> Nuevo Movimiento Puntual
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input type="text" id="descMov" placeholder="Descripción" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none">
+                <input type="number" id="montoMov" step="0.01" placeholder="Importe (€)" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none">
+                <select id="tipoMov" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none">
+                    <option value="ingreso">Ingreso</option>
+                    <option value="gasto">Gasto</option>
+                    <option value="ahorro">Ahorro Propio</option>
+                </select>
+                <button onclick="agregarMovimiento()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-xl transition">Registrar</button>
+            </div>
+        </div>
+
+        <!-- APARTADO DE CAPTURA DE TICKETS PENDIENTES -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg space-y-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-camera text-sky-400"></i> Archivo de Tickets (Gastos Pendientes)
+            </h2>
+            <p class="text-xs text-slate-400">Haz una foto o sube la imagen de tu ticket para registrar el gasto más adelante con calma.</p>
+            <div class="flex flex-col md:flex-row gap-3 items-center">
+                <input type="file" id="ticketInput" accept="image/*" capture="environment" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white w-full text-sm">
+                <button onclick="guardarTicket()" class="bg-sky-600 hover:bg-sky-500 text-white font-medium px-6 py-2 rounded-xl transition w-full md:w-auto">Subir Ticket</button>
+            </div>
+            <div id="galeriaTickets" class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3"></div>
+        </div>
+
+        <!-- TABLA DE MOVIMIENTOS -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-slate-700 font-semibold">Historial del Mes</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider">
+                            <th class="p-4">Tipo</th>
+                            <th class="p-4">Descripción</th>
+                            <th class="p-4">Importe</th>
+                            <th class="p-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMovimientos" class="divide-y divide-slate-700 text-sm">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DE CONTROL Y FUNCIONALIDAD -->
+    <script>
+        let db = {
+            email: "default",
+            meses: {}
+        };
+
+        let chartInstancia = null;
+
+        function obtenerMesActualStr() {
+            const ahora = new Date();
+            return ahora.toISOString().slice(0, 7);
+        }
+
+        window.onload = function() {
+            document.getElementById('mesSelector').value = obtenerMesActualStr();
+            const savedEmail = localStorage.getItem('current_email') || "default@control.com";
+            document.getElementById('userEmail').value = savedEmail;
+            cargarDatosUsuario(savedEmail);
+        }
+
+        function cambiarCuentaUser() {
+            const email = document.getElementById('userEmail').value.trim() || "default@control.com";
+            localStorage.setItem('current_email', email);
+            cargarDatosUsuario(email);
+        }
+
+        function cargarDatosUsuario(email) {
+            db.email = email;
+            const dataGuardada = localStorage.getItem('finanzas_db_' + email);
+            if (dataGuardada) {
+                db = JSON.parse(dataGuardada);
+            } else {
+                db.meses = {};
+            }
+            verificarMesActual();
+            renderApp();
+        }
+
+        function guardarDatos() {
+            localStorage.setItem('finanzas_db_' + db.email, JSON.stringify(db));
+        }
+
+        function obtenerMesActualData() {
+            const mesKey = document.getElementById('mesSelector').value;
+            if (!db.meses[mesKey]) {
+                db.meses[mesKey] = {
+                    capitalInicial: 0,
+                    metaAhorro: 0,
+                    gastosFijos: [],
+                    movimientos: [],
+                    tickets: []
+                };
+            }
+            return db.meses[mesKey];
+        }
+
+        function verificarMesActual() {
+            const mesKey = document.getElementById('mesSelector').value;
+            const mData = obtenerMesActualData();
+            
+            // Aplicar gastos fijos automáticos si están vacíos
+            if (mData.gastosFijos.length > 0 && mData.movimientos.filter(m => m.esFijo).length === 0) {
+                mData.gastosFijos.forEach(fijo => {
+                    mData.movimientos.unshift({
+                        id: Date.now() + Math.random(),
+                        desc: "[Fijo] " + fijo.nombre,
+                        monto: fijo.monto,
+                        tipo: "gasto",
+                        esFijo: true
+                    });
+                });
+            }
+        }
+
+        function actualizarMes() {
+            verificarMesActual();
+            renderApp();
+        }
+
+        function guardarCapitalInicial() {
+            const mData = obtenerMesActualData();
+            mData.capitalInicial = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
+            guardarDatos();
+            renderApp();
+        }
+
+        function guardarMetaAhorro() {
+            const mData = obtenerMesActualData();
+            mData.metaAhorro = parseFloat(document.getElementById('metaAhorroInput').value) || 0;
+            guardarDatos();
+            renderApp();
+        }
+
+        function agregarGastoFijo() {
+            const nombre = document.getElementById('nombreGastoFijo').value;
+            const monto = parseFloat(document.getElementById('montoGastoFijo').value);
+            if (!nombre || isNaN(monto)) return;
+
+            const mData = obtenerMesActualData();
+            mData.gastosFijos.push({ id: Date.now(), nombre, monto });
+            
+            // Añadirlo inmediatamente a los movimientos
+            mData.movimientos.unshift({
+                id: Date.now() + 1,
+                desc: "[Fijo] " + nombre,
+                monto: monto,
+                tipo: "gasto",
+                esFijo: true
+            });
+
+            document.getElementById('nombreGastoFijo').value = "";
+            document.getElementById('montoGastoFijo').value = "";
+            guardarDatos();
+            renderApp();
+        }
+
+        function eliminarGastoFijo(id) {
+            const mData = obtenerMesActualData();
+            mData.gastosFijos = mData.gastosFijos.filter(f => f.id !== id);
+            guardarDatos();
+            renderApp();
+        }
+
+        function agregarMovimiento() {
+            const desc = document.getElementById('descMov').value;
+            const monto = parseFloat(document.getElementById('montoMov').value);
+            const tipo = document.getElementById('tipoMov').value;
+            if (!desc || isNaN(monto)) return;
+
+            const mData = obtenerMesActualData();
+            mData.movimientos.push({ id: Date.now(), desc, monto, tipo, esFijo: false });
+
+            document.getElementById('descMov').value = "";
+            document.getElementById('montoMov').value = "";
+            guardarDatos();
+            renderApp();
+        }
+
+        function eliminarMovimiento(id) {
+            const mData = obtenerMesActualData();
+            mData.movimientos = mData.movimientos.filter(m => m.id !== id);
+            guardarDatos();
+            renderApp();
+        }
+
+        function guardarTicket() {
+            const fileInput = document.getElementById('ticketInput');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const mData = obtenerMesActualData();
+                    if (!mData.tickets) mData.tickets = [];
+                    mData.tickets.push({ id: Date.now(), img: e.target.result });
+                    guardarDatos();
+                    renderApp();
+                    fileInput.value = "";
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
+        function eliminarTicket(id) {
+            const mData = obtenerMesActualData();
+            mData.tickets = mData.tickets.filter(t => t.id !== id);
+            guardarDatos();
+            renderApp();
+        }
+
+        function calcularRolloverAnterior() {
+            // Calcular desviación de ahorro del mes anterior para sumar/restar
+            const mesKey = document.getElementById('mesSelector').value;
+            let [anio, mes] = mesKey.split('-').map(Number);
+            mes -= 1;
+            if (mes === 0) { mes = 12; anio -= 1; }
+            const mesAntKey = `${anio}-${mes.toString().padStart(2, '0')}`;
+            
+            const mesAnt = db.meses[mesAntKey];
+            if (!mesAnt) return 0;
+
+            let ing = 0, gas = 0, aho = 0;
+            mesAnt.movimientos.forEach(m => {
+                if (m.tipo === 'ingreso') ing += m.monto;
+                if (m.tipo === 'gasto') gas += m.monto;
+                if (m.tipo === 'ahorro') aho += m.monto;
+            });
+
+            const ahorroReal = (mesAnt.capitalInicial + ing) - gas - aho;
+            const diferencia = ahorroReal - mesAnt.metaAhorro;
+            return diferencia; // Si ahorró de más es positivo (bono), si faltó es negativo
+        }
+
+        function renderApp() {
+            const mData = obtenerMesActualData();
+            
+            document.getElementById('capitalInicialInput').value = mData.capitalInicial || "";
+            document.getElementById('metaAhorroInput').value = mData.metaAhorro || "";
+
+            let totalIngresos = 0;
+            let totalGastos = 0;
+            let totalAhorros = 0;
+
+            const tbody = document.getElementById('tablaMovimientos');
+            tbody.innerHTML = "";
+
+            mData.movimientos.forEach(m => {
+                if (m.tipo === 'ingreso') totalIngresos += m.monto;
+                if (m.tipo === 'gasto') totalGastos += m.monto;
+                if (m.tipo === 'ahorro') totalAhorros += m.monto;
+
+                let colorClase = m.tipo === 'ingreso' ? 'text-emerald-400' : m.tipo === 'gasto' ? 'text-rose-400' : 'text-indigo-400';
+                let signo = m.tipo === 'ingreso' ? '+' : '-';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-900/30 transition">
+                        <td class="p-4 capitalize font-medium ${colorClase}">${m.tipo}</td>
+                        <td class="p-4 text-slate-300">${m.desc}</td>
+                        <td class="p-4 font-bold ${colorClase}">${signo}${m.monto.toFixed(2)} €</td>
+                        <td class="p-4 text-right">
+                            <button onclick="eliminarMovimiento(${m.id})" class="text-slate-500 hover:text-rose-400 transition"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const rollover = calcularRolloverAnterior();
+            const saldoFinal = (mData.capitalInicial + totalIngresos) - totalGastos - totalAhorros + rollover;
+
+            document.getElementById('totalIngresos').innerText = totalIngresos.toFixed(2) + " €";
+            document.getElementById('totalGastos').innerText = totalGastos.toFixed(2) + " €";
+            document.getElementById('saldoFinal').innerText = saldoFinal.toFixed(2) + " €";
+            
+            const textoRollover = rollover >= 0 ? `+${rollover.toFixed(2)} € (Ahorro extra acumulado)` : `${rollover.toFixed(2)} € (Déficit arrastrado)`;
+            document.getElementById('infoRollover').innerText = "Arrastre inteligente por desvío mes anterior: " + textoRollover;
+
+            // Renderizar Gastos Fijos Configurados
+            const divFijos = document.getElementById('listaGastosFijos');
+            divFijos.innerHTML = "";
+            mData.gastosFijos.forEach(f => {
+                divFijos.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs">
+                        <span>${f.nombre}: <strong>${f.monto}€</strong></span>
+                        <button onclick="eliminarGastoFijo(${f.id})" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `;
+            });
+
+            // Renderizar Galería de Tickets
+            const divTickets = document.getElementById('galeriaTickets');
+            divTickets.innerHTML = "";
+            if (mData.tickets) {
+                mData.tickets.forEach(t => {
+                    divTickets.innerHTML += `
+                        <div class="relative bg-slate-900 border border-slate-700 rounded-xl overflow-hidden group">
+                            <img src="${t.img}" class="w-full h-24 object-cover">
+                            <button onclick="eliminarTicket(${t.id})" class="absolute top-1 right-1 bg-rose-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow hover:bg-rose-500">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            // Actualizar Gráfica de Gastos
+            actualizarGrafica(mData.movimientos);
+        }
+
+        function actualizarGrafica(movimientos) {
+            const ctx = document.getElementById('graficoGastos').getContext('2d');
+            
+            // Agrupar gastos
+            let categorias = {};
+            movimientos.filter(m => m.tipo === 'gasto').forEach(m => {
+                let cat = m.desc.includes('[Fijo]') ? 'Gastos Fijos' : 'Gastos Variables';
+                categorias[cat] = (categorias[cat] || 0) + m.monto;
+            });
+
+            const labels = Object.keys(categorias);
+            const dataVals = Object.values(categorias);
+
+            if (chartInstancia) {
+                chartInstancia.destroy();
+            }
+
+            if (labels.length === 0) {
+                labels.push('Sin gastos');
+                dataVals.push(1);
+            }
+
+            chartInstancia = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataVals,
+                        backgroundColor: ['#f43f5e', '#fbbf24', '#6366f1', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
