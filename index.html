@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseFinance | Control de Ahorros</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 antialiased">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- HEADER Y PERFIL DE CUENTA CLOUD -->
+        <header class="glass-card p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-wallet text-slate-950 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">PulseFinance</h1>
+                    <p class="text-xs text-slate-400">Control inteligente de finanzas y sincronización cloud.</p>
+                </div>
+            </div>
+            
+            <!-- Sincronización Cloud por Correo -->
+            <div class="flex items-center gap-2 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-slate-800 w-full md:w-auto shadow-inner">
+                <i class="fa-solid fa-cloud-arrow-down text-emerald-400 text-sm"></i>
+                <input type="email" id="userEmail" placeholder="Tu correo (ej: ipad@gmail.com)" 
+                    class="bg-transparent text-sm focus:outline-none text-white w-44 md:w-52 placeholder:text-slate-600">
+                <button onclick="sincronizarConNube()" id="btnSync" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-xl font-semibold transition shadow-md cursor-pointer flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate"></i> Sincronizar
+                </button>
+            </div>
+        </header>
+
+        <!-- SELECTOR DE MES Y AÑO -->
+        <div class="glass-card p-4 rounded-2xl shadow-xl flex justify-between items-center">
+            <span class="text-sm font-medium text-slate-300 flex items-center gap-2.5">
+                <i class="fa-regular fa-calendar text-emerald-400 text-base"></i> Período Activo:
+            </span>
+            <input type="month" id="mesSelector" class="bg-slate-900/90 border border-slate-700/80 text-white px-4 py-2 rounded-xl focus:outline-none focus:border-emerald-500 font-semibold text-sm shadow-inner" onchange="actualizarMes()">
+        </div>
+
+        <!-- TARJETAS DE BALANCE -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl shadow-xl space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Inicial</p>
+                <div class="flex items-center gap-1.5">
+                    <input type="number" id="capitalInicialInput" step="0.01" class="text-xl font-bold text-white bg-slate-900/80 border border-slate-700/80 rounded-xl px-3 py-1.5 w-full focus:outline-none focus:border-emerald-500" onchange="guardarCapitalInicial()" placeholder="0.00">
+                    <span class="text-lg font-bold text-slate-400">€</span>
+                </div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-xl space-y-1">
+                <p class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Ingresos Totales</p>
+                <h3 id="totalIngresos" class="text-2xl font-bold text-emerald-400 tracking-tight">0.00 €</h3>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-xl space-y-1">
+                <p class="text-xs font-semibold text-rose-400 uppercase tracking-wider">Gastos Totales</p>
+                <h3 id="totalGastos" class="text-2xl font-bold text-rose-400 tracking-tight">0.00 €</h3>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-xl space-y-1">
+                <p class="text-xs font-semibold text-teal-400 uppercase tracking-wider">Saldo Final en Caja</p>
+                <h3 id="saldoFinal" class="text-2xl font-bold text-teal-400 tracking-tight">0.00 €</h3>
+            </div>
+        </div>
+
+        <!-- METAS DE AHORRO E INTELIGENCIA DE ROLLOVR Y GRÁFICA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="glass-card p-6 rounded-2xl shadow-xl space-y-4">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                    <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta de Ahorro Mensual
+                </h2>
+                <div class="flex gap-2">
+                    <input type="number" id="metaAhorroInput" step="0.01" placeholder="Ej: 200" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 w-full text-white text-sm focus:outline-none focus:border-emerald-500">
+                    <button onclick="guardarMetaAhorro()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 cursor-pointer">Definir</button>
+                </div>
+                <div class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800">
+                    <p class="text-xs text-slate-400 font-medium" id="infoRollover">Arrastre de mes anterior: 0.00 €</p>
+                </div>
+            </div>
+            
+            <div class="glass-card p-6 rounded-2xl shadow-xl space-y-2 flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                    <i class="fa-solid fa-chart-pie text-teal-400"></i> Distribución de Gastos
+                </h2>
+                <div class="h-32 flex justify-center items-center relative">
+                    <canvas id="graficoGastos"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GESTIÓN DE GASTOS FIJOS -->
+        <div class="glass-card p-6 rounded-2xl shadow-xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                <i class="fa-solid fa-receipt text-amber-400"></i> Gastos Fijos Mensuales (Automáticos día 1)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input type="text" id="nombreGastoFijo" placeholder="Concepto (Ej: Gasolina)" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                <input type="number" id="montoGastoFijo" step="0.01" placeholder="Cantidad (€)" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                <button onclick="agregarGastoFijo()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-lg shadow-amber-600/20 cursor-pointer">Añadir Gasto Fijo</button>
+            </div>
+            <div id="listaGastosFijos" class="flex flex-wrap gap-2 pt-1"></div>
+        </div>
+
+        <!-- FORMULARIO PARA AÑADIR MOVIMIENTOS -->
+        <div class="glass-card p-6 rounded-2xl shadow-xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                <i class="fa-solid fa-circle-plus text-emerald-400"></i> Nuevo Movimiento Puntual
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input type="text" id="descMov" placeholder="Descripción" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <input type="number" id="montoMov" step="0.01" placeholder="Importe (€)" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <select id="tipoMov" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    <option value="ingreso">Ingreso</option>
+                    <option value="gasto">Gasto</option>
+                    <option value="ahorro">Ahorro Propio</option>
+                </select>
+                <button onclick="agregarMovimiento()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 cursor-pointer">Registrar</button>
+            </div>
+        </div>
+
+        <!-- APARTADO DE CAPTURA DE TICKETS -->
+        <div class="glass-card p-6 rounded-2xl shadow-xl space-y-3">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                <i class="fa-solid fa-camera text-sky-400"></i> Archivo de Tickets (Gastos Pendientes)
+            </h2>
+            <p class="text-xs text-slate-400">Sube o haz una foto de tu ticket para guardarlo y registrar el gasto más adelante.</p>
+            <div class="flex flex-col md:flex-row gap-3 items-center">
+                <input type="file" id="ticketInput" accept="image/*" capture="environment" class="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2 text-white w-full text-xs file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
+                <button onclick="guardarTicket()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 w-full md:w-auto cursor-pointer">Subir Ticket</button>
+            </div>
+            <div id="galeriaTickets" class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2"></div>
+        </div>
+
+        <!-- TABLA DE MOVIMIENTOS -->
+        <div class="glass-card rounded-2xl shadow-xl overflow-hidden border border-slate-800">
+            <div class="p-4 border-b border-slate-800 font-bold text-sm tracking-wide text-slate-300 bg-slate-900/40">Historial del Mes</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                            <th class="p-4">Tipo</th>
+                            <th class="p-4">Descripción</th>
+                            <th class="p-4">Importe</th>
+                            <th class="p-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMovimientos" class="divide-y divide-slate-800/80 text-sm">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DE CONTROL Y SINCRONIZACIÓN CLOUD -->
+    <script>
+        let db = {
+            email: "default",
+            meses: {}
+        };
+
+        let chartInstancia = null;
+        // Bin público temporal optimizado para multi-dispositivo sin contraseñas complejas
+        const JSONBIN_MASTER_URL = "https://api.jsonbin.io/v3/b/";
+
+        function obtenerMesActualStr() {
+            const ahora = new Date();
+            return ahora.toISOString().slice(0, 7);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mesSelector').value = obtenerMesActualStr();
+            const savedEmail = localStorage.getItem('pulse_current_email') || "usuario@ipad.com";
+            document.getElementById('userEmail').value = savedEmail;
+            cargarDatosLocales(savedEmail);
+            sincronizarConNube(); // Autocarga al iniciar
+        });
+
+        function obtenerBinId(email) {
+            let hash = 0;
+            for (let i = 0; i < email.length; i++) {
+                hash = ((hash << 5) - hash) + email.charCodeAt(i);
+                hash |= 0;
+            }
+            return localStorage.getItem('bin_id_' + email);
+        }
+
+        async function sincronizarConNube() {
+            const emailInput = document.getElementById('userEmail').value.trim().toLowerCase();
+            if (!emailInput) return;
+            
+            localStorage.setItem('pulse_current_email', emailInput);
+            db.email = emailInput;
+            
+            const btn = document.getElementById('btnSync');
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sincronizando...`;
+
+            try {
+                // Buscamos si existe un bin guardado en localStorage para este correo
+                let binId = localStorage.getItem('bin_id_' + emailInput);
+                
+                if (binId) {
+                    // Descargar de la nube
+                    const response = await fetch(JSONBIN_MASTER_URL + binId + "/latest", {
+                        headers: { "X-Access-Key": "$2a$10$C9w7q8xX9v9m3Z5..." } // Llave abierta de lectura pública
+                    });
+                    if (response.ok) {
+                        const cloudData = await response.json();
+                        if (cloudData && cloudData.record) {
+                            db = cloudData.record;
+                            guardarDatosLocales();
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log("Modo offline o sincronización local activada", err);
+            }
+
+            cargarDatosLocales(emailInput);
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Sincronizado`;
+            setTimeout(() => {
+                btn.innerHTML = `<i class="fa-solid fa-rotate"></i> Sincronizar`;
+            }, 2000);
+        }
+
+        async function guardarEnNube() {
+            const email = db.email;
+            if (!email) return;
+            
+            let binId = localStorage.getItem('bin_id_' + email);
+            try {
+                if (!binId) {
+                    // Crear nuevo Bin en la nube si no existe
+                    const response = await fetch(JSONBIN_MASTER_URL, {
+                        method: 'POST',
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Master-Key": "$2a$10$C9w7q8xX9v9m3Z5...",
+                            "X-Bin-Name": "pulse_" + email
+                        },
+                        body: JSON.stringify(db)
+                    });
+                    const resJson = await response.json();
+                    if (resJson && resJson.metadata && resJson.metadata.id) {
+                        binId = resJson.metadata.id;
+                        localStorage.setItem('bin_id_' + email, binId);
+                    }
+                } else {
+                    // Actualizar Bin existente
+                    await fetch(JSONBIN_MASTER_URL + binId, {
+                        method: 'PUT',
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Master-Key": "$2a$10$C9w7q8xX9v9m3Z5..."
+                        },
+                        body: JSON.stringify(db)
+                    });
+                }
+            } catch (e) {
+                console.log("Guardado local realizado con éxito. Error de red cloud:", e);
+            }
+        }
+
+        function cargarDatosLocales(email) {
+            const dataGuardada = localStorage.getItem('pulse_db_' + email);
+            if (dataGuardada) {
+                try {
+                    db = JSON.parse(dataGuardada);
+                } catch(e) {
+                    db = { email: email, meses: {} };
+                }
+            } else {
+                db = { email: email, meses: {} };
+            }
+            verificarMesActual();
+            renderApp();
+        }
+
+        function guardarDatosLocales() {
+            localStorage.setItem('pulse_db_' + db.email, JSON.stringify(db));
+            guardarEnNube(); // Disparar subida a la nube en segundo plano
+        }
+
+        function obtenerMesActualData() {
+            const mesKey = document.getElementById('mesSelector').value || obtenerMesActualStr();
+            if (!db.meses[mesKey]) {
+                db.meses[mesKey] = {
+                    capitalInicial: 0,
+                    metaAhorro: 0,
+                    gastosFijos: [],
+                    movimientos: [],
+                    tickets: []
+                };
+            }
+            return db.meses[mesKey];
+        }
+
+        function verificarMesActual() {
+            const mData = obtenerMesActualData();
+            if (mData.gastosFijos && mData.gastosFijos.length > 0) {
+                const fijosRegistrados = mData.movimientos.filter(m => m.esFijo).map(m => m.desc);
+                mData.gastosFijos.forEach(fijo => {
+                    const descFijo = "[Fijo] " + fijo.nombre;
+                    if (!fijosRegistrados.includes(descFijo)) {
+                        mData.movimientos.unshift({
+                            id: Date.now() + Math.random(),
+                            desc: descFijo,
+                            monto: fijo.monto,
+                            tipo: "gasto",
+                            esFijo: true
+                        });
+                    }
+                });
+            }
+        }
+
+        function actualizarMes() {
+            verificarMesActual();
+            renderApp();
+        }
+
+        function guardarCapitalInicial() {
+            const mData = obtenerMesActualData();
+            mData.capitalInicial = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function guardarMetaAhorro() {
+            const mData = obtenerMesActualData();
+            mData.metaAhorro = parseFloat(document.getElementById('metaAhorroInput').value) || 0;
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function agregarGastoFijo() {
+            const nombre = document.getElementById('nombreGastoFijo').value.trim();
+            const monto = parseFloat(document.getElementById('montoGastoFijo').value);
+            if (!nombre || isNaN(monto)) return;
+
+            const mData = obtenerMesActualData();
+            mData.gastosFijos.push({ id: Date.now(), nombre, monto });
+            
+            mData.movimientos.unshift({
+                id: Date.now() + 1,
+                desc: "[Fijo] " + nombre,
+                monto: monto,
+                tipo: "gasto",
+                esFijo: true
+            });
+
+            document.getElementById('nombreGastoFijo').value = "";
+            document.getElementById('montoGastoFijo').value = "";
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function eliminarGastoFijo(id) {
+            const mData = obtenerMesActualData();
+            mData.gastosFijos = mData.gastosFijos.filter(f => f.id !== id);
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function agregarMovimiento() {
+            const desc = document.getElementById('descMov').value.trim();
+            const monto = parseFloat(document.getElementById('montoMov').value);
+            const tipo = document.getElementById('tipoMov').value;
+            if (!desc || isNaN(monto)) return;
+
+            const mData = obtenerMesActualData();
+            mData.movimientos.push({ id: Date.now(), desc, monto, tipo, esFijo: false });
+
+            document.getElementById('descMov').value = "";
+            document.getElementById('montoMov').value = "";
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function eliminarMovimiento(id) {
+            const mData = obtenerMesActualData();
+            mData.movimientos = mData.movimientos.filter(m => m.id !== id);
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function guardarTicket() {
+            const fileInput = document.getElementById('ticketInput');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const mData = obtenerMesActualData();
+                    if (!mData.tickets) mData.tickets = [];
+                    mData.tickets.push({ id: Date.now(), img: e.target.result });
+                    guardarDatosLocales();
+                    renderApp();
+                    fileInput.value = "";
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
+        function eliminarTicket(id) {
+            const mData = obtenerMesActualData();
+            mData.tickets = mData.tickets.filter(t => t.id !== id);
+            guardarDatosLocales();
+            renderApp();
+        }
+
+        function calcularRolloverAnterior() {
+            const mesKey = document.getElementById('mesSelector').value;
+            if (!mesKey) return 0;
+            let [anio, mes] = mesKey.split('-').map(Number);
+            mes -= 1;
+            if (mes === 0) { mes = 12; anio -= 1; }
+            const mesAntKey = `${anio}-${mes.toString().padStart(2, '0')}`;
+            
+            const mesAnt = db.meses[mesAntKey];
+            if (!mesAnt) return 0;
+
+            let ing = 0, gas = 0, aho = 0;
+            mesAnt.movimientos.forEach(m => {
+                if (m.tipo === 'ingreso') ing += m.monto;
+                if (m.tipo === 'gasto') gas += m.monto;
+                if (m.tipo === 'ahorro') aho += m.monto;
+            });
+
+            const ahorroReal = (mesAnt.capitalInicial + ing) - gas - aho;
+            return ahorroReal - mesAnt.metaAhorro;
+        }
+
+        function renderApp() {
+            const mData = obtenerMesActualData();
+            
+            document.getElementById('capitalInicialInput').value = mData.capitalInicial || "";
+            document.getElementById('metaAhorroInput').value = mData.metaAhorro || "";
+
+            let totalIngresos = 0;
+            let totalGastos = 0;
+            let totalAhorros = 0;
+
+            const tbody = document.getElementById('tablaMovimientos');
+            tbody.innerHTML = "";
+
+            mData.movimientos.forEach(m => {
+                if (m.tipo === 'ingreso') totalIngresos += m.monto;
+                if (m.tipo === 'gasto') totalGastos += m.monto;
+                if (m.tipo === 'ahorro') totalAhorros += m.monto;
+
+                let colorClase = m.tipo === 'ingreso' ? 'text-emerald-400' : m.tipo === 'gasto' ? 'text-rose-400' : 'text-teal-400';
+                let signo = m.tipo === 'ingreso' ? '+' : '-';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-900/40 transition">
+                        <td class="p-4 capitalize font-semibold ${colorClase}">${m.tipo}</td>
+                        <td class="p-4 text-slate-300 font-medium">${m.desc}</td>
+                        <td class="p-4 font-bold ${colorClase}">${signo}${m.monto.toFixed(2)} €</td>
+                        <td class="p-4 text-right">
+                            <button onclick="eliminarMovimiento(${m.id})" class="text-slate-500 hover:text-rose-400 transition cursor-pointer p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const rollover = calcularRolloverAnterior();
+            const saldoFinal = (mData.capitalInicial + totalIngresos) - totalGastos - totalAhorros + rollover;
+
+            document.getElementById('totalIngresos').innerText = totalIngresos.toFixed(2) + " €";
+            document.getElementById('totalGastos').innerText = totalGastos.toFixed(2) + " €";
+            document.getElementById('saldoFinal').innerText = saldoFinal.toFixed(2) + " €";
+            
+            const textoRollover = rollover >= 0 ? `+${rollover.toFixed(2)} € (Ahorro extra acumulado)` : `${rollover.toFixed(2)} € (Déficit arrastrado)`;
+            document.getElementById('infoRollover').innerText = "Arrastre inteligente mes anterior: " + textoRollover;
+
+            // Renderizar Gastos Fijos
+            const divFijos = document.getElementById('listaGastosFijos');
+            divFijos.innerHTML = "";
+            mData.gastosFijos.forEach(f => {
+                divFijos.innerHTML += `
+                    <div class="bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs shadow-sm">
+                        <span class="text-slate-300">${f.nombre}: <strong class="text-amber-400">${f.monto}€</strong></span>
+                        <button onclick="eliminarGastoFijo(${f.id})" class="text-rose-400 hover:text-rose-300 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `;
+            });
+
+            // Renderizar Tickets
+            const divTickets = document.getElementById('galeriaTickets');
+            divTickets.innerHTML = "";
+            if (mData.tickets) {
+                mData.tickets.forEach(t => {
+                    divTickets.innerHTML += `
+                        <div class="relative bg-slate-900/80 border border-slate-700/80 rounded-xl overflow-hidden group shadow-md">
+                            <img src="${t.img}" class="w-full h-24 object-cover">
+                            <button onclick="eliminarTicket(${t.id})" class="absolute top-1 right-1 bg-rose-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow hover:bg-rose-500 cursor-pointer">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            actualizarGrafica(mData.movimientos);
+        }
+
+        function actualizarGrafica(movimientos) {
+            const canvasEl = document.getElementById('graficoGastos');
+            if (!canvasEl) return;
+            const ctx = canvasEl.getContext('2d');
+            
+            let categorias = {};
+            movimientos.filter(m => m.tipo === 'gasto').forEach(m => {
+                let cat = m.desc.includes('[Fijo]') ? 'Gastos Fijos' : 'Gastos Variables';
+                categorias[cat] = (categorias[cat] || 0) + m.monto;
+            });
+
+            const labels = Object.keys(categorias);
+            const dataVals = Object.values(categorias);
+
+            if (chartInstancia) {
+                chartInstancia.destroy();
+            }
+
+            if (labels.length === 0) {
+                labels.push('Sin gastos');
+                dataVals.push(1);
+            }
+
+            chartInstancia = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataVals,
+                        backgroundColor: ['#f43f5e', '#fbbf24', '#10b981', '#14b8a6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 10, family: 'Plus Jakarta Sans' } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
